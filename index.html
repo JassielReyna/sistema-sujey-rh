@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistencia y Actividades - Profa. Sujey</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- Librería para exportar a Excel (.xlsx) con colores y formato -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; margin: 0; }
+        h1 { color: #333; margin-bottom: 5px; }
+        h3 { color: #555; margin-top: 0; margin-bottom: 20px; font-weight: normal; }
+        
+        /* Navegación entre vistas principales */
+        .nav-bar { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; }
+        .nav-btn { padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; background-color: #ddd; color: #333; transition: 0.3s; }
+        .nav-btn.activa { background-color: #b07cc6; color: white; }
+
+        /* Controles de Modo (Escáner) */
+        .modo-bar { margin-bottom: 15px; display: flex; justify-content: center; gap: 10px; background: white; padding: 10px; border-radius: 8px; max-width: 450px; margin-left: auto; margin-right: auto; box-shadow: 0px 4px 10px rgba(0,0,0,0.05); }
+        .modo-btn { padding: 8px 15px; font-size: 15px; font-weight: bold; cursor: pointer; border: 2px solid transparent; border-radius: 5px; background-color: #f0f0f0; color: #555; transition: 0.3s; width: 50%; }
+        .modo-btn.activa { border: 2px solid #b07cc6; background-color: #fdf5ff; color: #b07cc6; }
+
+        /* Vistas */
+        #vista-escaner { display: block; }
+        #vista-reportes { display: none; text-align: left; max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); overflow-x: auto; }
+
+        /* Burbuja de Notificaciones (Status) - Arriba */
+        #status { margin: 0 auto 15px auto; padding: 12px; font-weight: bold; font-size: 1.2em; color: #b07cc6; background-color: white; border-radius: 8px; max-width: 450px; box-shadow: 0px 4px 10px rgba(0,0,0,0.08); }
+
+        /* Contenedor del Escáner */
+        #reader { width: 100%; max-width: 450px; margin: 0 auto; background: white; padding: 10px; border-radius: 8px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
+        
+        #reader select { padding: 12px !important; font-size: 16px !important; margin-bottom: 20px !important; border-radius: 5px !important; width: 90% !important; max-width: 300px !important; border: 2px solid #ccc !important; }
+        #reader button { padding: 15px 25px !important; font-size: 16px !important; margin: 10px !important; border-radius: 8px !important; background-color: #b07cc6 !important; color: white !important; border: none !important; font-weight: bold !important; cursor: pointer !important; box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important; transition: 0.3s !important; }
+        #reader button:hover { background-color: #9b59b6 !important; }
+        #reader a { font-size: 16px !important; display: inline-block !important; margin-top: 15px !important; padding: 10px !important; color: #b07cc6 !important; }
+
+        /* Controles de reporte */
+        .controles-reporte { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+        .controles-reporte select, .controles-reporte input { padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-accion { padding: 10px 15px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; color: white; background-color: #b07cc6; transition: 0.3s; }
+        .btn-accion:hover { background-color: #9b59b6; }
+        .btn-accion.verde { background-color: #28a745; display: none; } 
+        .btn-accion.verde:hover { background-color: #218838; }
+
+        /* Tabla de Reportes */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #b07cc6; color: white; position: sticky; top: 0; }
+        td.nombre-col { text-align: left; font-weight: bold; white-space: nowrap; }
+        .asistio { background-color: #e8f8f5; color: #1e8449; font-weight: bold; }
+        .falto { background-color: #fdedec; color: #c0392b; opacity: 0.75; }
+    </style>
+</head>
+<body>
+
+    <h1>Gestor de Asistencias y Actividades</h1>
+    <h3>Profesora Sujey</h3>
+
+    <!-- Menú Principal -->
+    <div class="nav-bar">
+        <button id="btn-nav-escaner" class="nav-btn activa" onclick="cambiarVista('escaner')">📷 Escáner</button>
+        <button id="btn-nav-reportes" class="nav-btn" onclick="cambiarVista('reportes')">📊 Matriz de Reportes</button>
+    </div>
+    
+    <!-- VISTA 1: ESCÁNER -->
+    <div id="vista-escaner">
+        <!-- Sub-menú de MODO DE ESCANEO -->
+        <div class="modo-bar">
+            <button id="btn-modo-asistencia" class="modo-btn activa" onclick="setModoEscaneo('asistencia')">📝 Asistencia</button>
+            <button id="btn-modo-actividad" class="modo-btn" onclick="setModoEscaneo('actividad')">⭐ Actividad</button>
+        </div>
+
+        <!-- BURBUJA DE ESTADO -->
+        <div id="status">Iniciando sistema...</div>
+
+        <!-- CÁMARA -->
+        <div id="reader"></div>
+    </div>
+
+    <!-- VISTA 2: REPORTES -->
+    <div id="vista-reportes">
+        <h2>Generador de Matriz Mensual</h2>
+        
+        <div class="controles-reporte">
+            <div>
+                <label>Reporte de: </label>
+                <select id="select-tipo-reporte">
+                    <option value="asistencia">Asistencias (1 / 0)</option>
+                    <option value="actividad">Actividades (Cantidad por día)</option>
+                </select>
+            </div>
+            <div>
+                <label>Grupo: </label>
+                <select id="select-grupo">
+                    <option value="">Cargando...</option>
+                </select>
+            </div>
+            <div>
+                <label>Mes: </label>
+                <input type="month" id="input-mes" required>
+            </div>
+            <button class="btn-accion" onclick="generarReporte()">Generar Tabla</button>
+            <button id="btn-descarga" class="btn-accion verde" onclick="descargarMatrizExcel()">⬇️ Descargar Excel</button>
+        </div>
+
+        <div id="contenedor-matriz">
+            <p>Selecciona tipo de reporte, grupo y mes.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- TUS LLAVES ---
+        const URL_PROYECTO = 'https://retwotliyxutzgsftwff.supabase.co';
+        const LLAVE_PUBLICA = 'sb_publishable_mjZTWi3pGAHXd6tGyEJkBQ_nAXal2kD';
+        const clienteSupabase = supabase.createClient(URL_PROYECTO, LLAVE_PUBLICA);
+
+        // --- SISTEMA DE SONIDO INTEGRADO ---
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContextClass();
+
+        document.addEventListener('click', () => {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        });
+
+        function reproducirSonido(tipo) {
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const ahora = audioCtx.currentTime;
+
+                if (tipo === 'exito') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(987.77, ahora);
+                    osc.frequency.setValueAtTime(1318.51, ahora + 0.08);
+                    gain.gain.setValueAtTime(0.35, ahora);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.22);
+                    osc.start(ahora);
+                    osc.stop(ahora + 0.22);
+                } else if (tipo === 'alerta') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, ahora);
+                    osc.frequency.setValueAtTime(330, ahora + 0.12);
+                    gain.gain.setValueAtTime(0.35, ahora);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.28);
+                    osc.start(ahora);
+                    osc.stop(ahora + 0.28);
+                } else if (tipo === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(160, ahora);
+                    gain.gain.setValueAtTime(0.3, ahora);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ahora + 0.35);
+                    osc.start(ahora);
+                    osc.stop(ahora + 0.35);
+                }
+            } catch (e) {
+                console.error("No se pudo reproducir el sonido:", e);
+            }
+        }
+
+        let datosMatrizActual = [];
+        let fechasUnicas = [];
+        let modoEscaneoActual = 'asistencia'; 
+
+        function cambiarVista(vista) {
+            document.getElementById('vista-escaner').style.display = vista === 'escaner' ? 'block' : 'none';
+            document.getElementById('vista-reportes').style.display = vista === 'reportes' ? 'block' : 'none';
+            
+            document.getElementById('btn-nav-escaner').classList.toggle('activa', vista === 'escaner');
+            document.getElementById('btn-nav-reportes').classList.toggle('activa', vista === 'reportes');
+
+            if (vista === 'reportes') cargarGruposDisponibles();
+        }
+
+        function setModoEscaneo(modo) {
+            modoEscaneoActual = modo;
+            document.getElementById('btn-modo-asistencia').classList.toggle('activa', modo === 'asistencia');
+            document.getElementById('btn-modo-actividad').classList.toggle('activa', modo === 'actividad');
+            
+            const textoStatus = modo === 'asistencia' ? 'Tomando ASISTENCIAS...' : 'Registrando ACTIVIDADES...';
+            document.getElementById('status').innerText = textoStatus;
+            document.getElementById('status').style.color = "#b07cc6";
+        }
+
+        const statusText = document.getElementById('status');
+        let ultimoEscaneo = ""; 
+        let procesandoEscaneo = false; // Candado contra lecturas simultáneas
+        
+        const escaner = new Html5QrcodeScanner("reader", { 
+            fps: 10, 
+            qrbox: function(viewfinderWidth, viewfinderHeight) {
+                let areaVisible = Math.min(viewfinderWidth, viewfinderHeight);
+                let tamañoCuadrante = Math.floor(areaVisible * 0.85); 
+                return { width: tamañoCuadrante, height: tamañoCuadrante };
+            }
+        }, false);
+
+        async function onScanSuccess(codigoEscaneado) {
+            if (procesandoEscaneo || codigoEscaneado === ultimoEscaneo) return;
+            procesandoEscaneo = true;
+            ultimoEscaneo = codigoEscaneado;
+            
+            statusText.innerText = "Registrando alumno...";
+            statusText.style.color = "orange";
+
+            try {
+                const { data: alumno, error: errorAlumno } = await clienteSupabase
+                    .from('alumnos_profesora')
+                    .select('id, nombre_completo, grupo')
+                    .eq('codigo_qr', codigoEscaneado)
+                    .single();
+
+                if (errorAlumno || !alumno) {
+                    reproducirSonido('error');
+                    statusText.innerText = "❌ Código no reconocido.";
+                    statusText.style.color = "red";
+                    reiniciarEscaner();
+                    return;
+                }
+
+                const hoy = new Date();
+                const fechaHoy = hoy.toLocaleDateString('sv-SE'); 
+                
+                const tablaDestino = modoEscaneoActual === 'asistencia' ? 'asistencias_clase' : 'actividades_clase';
+
+                // Si es ASISTENCIA, validamos con .limit(1) para no duplicar jamás en la base de datos
+                if (modoEscaneoActual === 'asistencia') {
+                    const { data: registrosHoy, error: errorBusqueda } = await clienteSupabase
+                        .from(tablaDestino)
+                        .select('id')
+                        .eq('alumno_id', alumno.id)
+                        .eq('fecha', fechaHoy)
+                        .limit(1);
+
+                    if (errorBusqueda) throw errorBusqueda;
+
+                    if (registrosHoy && registrosHoy.length > 0) {
+                        reproducirSonido('alerta');
+                        statusText.innerText = `⚠️ ${alumno.nombre_completo} (${alumno.grupo}) ya fue escaneado hoy.`;
+                        statusText.style.color = "#856404"; 
+                        reiniciarEscaner();
+                        return;
+                    }
+
+                    const { error: errorInsert } = await clienteSupabase
+                        .from(tablaDestino)
+                        .insert([{ alumno_id: alumno.id, fecha: fechaHoy }]);
+
+                    if (errorInsert) throw errorInsert;
+
+                    reproducirSonido('exito');
+                    statusText.innerText = `✅ ASISTENCIA: ${alumno.nombre_completo} (${alumno.grupo})`;
+                    statusText.style.color = "green";
+
+                } else {
+                    // Si es ACTIVIDAD, permite múltiples registros al día y muestra cuántas lleva hoy
+                    const { error: errorAct } = await clienteSupabase
+                        .from(tablaDestino)
+                        .insert([{ alumno_id: alumno.id, fecha: fechaHoy }]);
+
+                    if (errorAct) throw errorAct;
+                    
+                    const { count } = await clienteSupabase
+                        .from(tablaDestino)
+                        .select('*', { count: 'exact', head: true })
+                        .eq('alumno_id', alumno.id)
+                        .eq('fecha', fechaHoy);
+
+                    reproducirSonido('exito');
+                    statusText.innerText = `✅ ACTIVIDAD #${count || 1} HOY: ${alumno.nombre_completo}`;
+                    statusText.style.color = "green";
+                }
+
+            } catch (error) {
+                reproducirSonido('error');
+                statusText.innerText = "Error de conexión.";
+                statusText.style.color = "red";
+            }
+            reiniciarEscaner();
+        }
+
+        function onScanFailure(error) {}
+
+        function reiniciarEscaner() {
+            setTimeout(() => { 
+                ultimoEscaneo = ""; 
+                procesandoEscaneo = false;
+                const textoStatus = modoEscaneoActual === 'asistencia' ? 'Tomando ASISTENCIAS...' : 'Registrando ACTIVIDADES...';
+                statusText.innerText = `Siguiente alumno... (${textoStatus})`;
+                statusText.style.color = "#b07cc6"; 
+            }, 2500); 
+        }
+
+        const hoy = new Date();
+        document.getElementById('input-mes').value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+
+        async function cargarGruposDisponibles() {
+            const select = document.getElementById('select-grupo');
+            const valorPrevio = select.value;
+            const { data, error } = await clienteSupabase.from('alumnos_profesora').select('grupo');
+            
+            if (error || !data) return;
+
+            const gruposUnicos = [...new Set(data.map(a => a.grupo))].sort();
+            
+            select.innerHTML = '<option value="">-- Elige un Grupo --</option>';
+            gruposUnicos.forEach(g => {
+                select.innerHTML += `<option value="${g}">${g}</option>`;
+            });
+            if (gruposUnicos.includes(valorPrevio)) select.value = valorPrevio;
+        }
+
+        async function generarReporte() {
+            const tipoReporte = document.getElementById('select-tipo-reporte').value;
+            const grupoSeleccionado = document.getElementById('select-grupo').value;
+            const mesSeleccionado = document.getElementById('input-mes').value; 
+            const contenedor = document.getElementById('contenedor-matriz');
+            const btnDescarga = document.getElementById('btn-descarga');
+
+            if (!grupoSeleccionado || !mesSeleccionado) {
+                alert("Por favor, selecciona un grupo y un mes.");
+                return;
+            }
+
+            contenedor.innerHTML = "<p>Procesando datos del mes...</p>";
+            btnDescarga.style.display = "none";
+
+            try {
+                const { data: alumnos } = await clienteSupabase
+                    .from('alumnos_profesora')
+                    .select('id, nombre_completo')
+                    .eq('grupo', grupoSeleccionado)
+                    .order('nombre_completo', { ascending: true });
+
+                if (!alumnos || alumnos.length === 0) {
+                    contenedor.innerHTML = "<p>No hay alumnos registrados en este grupo.</p>";
+                    return;
+                }
+
+                const [anio, mes] = mesSeleccionado.split('-');
+                const fechaInicio = `${anio}-${mes}-01`;
+                const fechaFin = new Date(anio, mes, 0).toLocaleDateString('sv-SE'); 
+
+                const idsAlumnos = alumnos.map(a => a.id);
+                const tablaConsulta = tipoReporte === 'asistencia' ? 'asistencias_clase' : 'actividades_clase';
+
+                const { data: registrosMes } = await clienteSupabase
+                    .from(tablaConsulta)
+                    .select('alumno_id, fecha')
+                    .in('alumno_id', idsAlumnos)
+                    .gte('fecha', fechaInicio)
+                    .lte('fecha', fechaFin);
+
+                fechasUnicas = [...new Set((registrosMes || []).map(a => a.fecha))].sort();
+
+                if (fechasUnicas.length === 0) {
+                    const nombreRep = tipoReporte === 'asistencia' ? 'asistencias' : 'actividades';
+                    contenedor.innerHTML = `<p>No hay ${nombreRep} registradas para este grupo en este mes.</p>`;
+                    return;
+                }
+
+                let htmlTabla = `<table><thead><tr><th>No.</th><th class="nombre-col">Nombre del Alumno</th>`;
+                
+                fechasUnicas.forEach(fecha => {
+                    const dia = fecha.split('-')[2]; 
+                    htmlTabla += `<th>Día ${dia}</th>`;
+                });
+                
+                const textoTotal = tipoReporte === 'asistencia' ? 'TOTAL ASISTENCIAS' : 'TOTAL ACT. ENTREGADAS';
+                htmlTabla += `<th>${textoTotal}</th></tr></thead><tbody>`;
+
+                datosMatrizActual = []; 
+
+                alumnos.forEach((alumno, index) => {
+                    let acumuladoTotal = 0;
+                    let numLista = index + 1; 
+                    
+                    let filaHTML = `<tr><td>${numLista}</td><td class="nombre-col">${alumno.nombre_completo}</td>`;
+                    let datosAlumno = { numero: numLista, nombre: alumno.nombre_completo, celdas: [], total: 0 };
+
+                    fechasUnicas.forEach(fecha => {
+                        const cantidadDia = registrosMes.filter(r => r.alumno_id === alumno.id && r.fecha === fecha).length;
+                        
+                        if (cantidadDia > 0) {
+                            const valorMostrado = tipoReporte === 'asistencia' ? 1 : cantidadDia;
+                            filaHTML += `<td class="asistio">${valorMostrado}</td>`;
+                            datosAlumno.celdas.push({ valor: valorMostrado, positivo: true });
+                            acumuladoTotal += valorMostrado;
+                        } else {
+                            const valorMostrado = 0;
+                            filaHTML += `<td class="falto">${valorMostrado}</td>`;
+                            datosAlumno.celdas.push({ valor: valorMostrado, positivo: false });
+                        }
+                    });
+
+                    datosAlumno.total = acumuladoTotal;
+                    datosMatrizActual.push(datosAlumno);
+
+                    filaHTML += `<td><strong>${acumuladoTotal}</strong></td></tr>`;
+                    htmlTabla += filaHTML;
+                });
+
+                htmlTabla += `</tbody></table>`;
+                contenedor.innerHTML = htmlTabla;
+                btnDescarga.style.display = "inline-block";
+
+            } catch (error) {
+                contenedor.innerHTML = "<p style='color:red;'>Ocurrió un error al cargar el reporte.</p>";
+            }
+        }
+
+        // --- DESCARGAR EXCEL (.XLSX) CON EL FORMATO Y COLORES DE LA PROFA. SUJEY ---
+        function descargarMatrizExcel() {
+            const tipoReporte = document.getElementById('select-tipo-reporte').value;
+            const grupoSeleccionado = document.getElementById('select-grupo').value;
+            const mesSeleccionado = document.getElementById('input-mes').value;
+            const textoTotal = tipoReporte === 'asistencia' ? 'TOTAL ASISTENCIAS' : 'TOTAL ACT. ENTREGADAS';
+
+            const bordeDelgado = {
+                top: { style: "thin", color: { rgb: "CCCCCC" } },
+                bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+                left: { style: "thin", color: { rgb: "CCCCCC" } },
+                right: { style: "thin", color: { rgb: "CCCCCC" } }
+            };
+
+            const estiloEncabezado = {
+                fill: { fgColor: { rgb: "B07CC6" } }, // Lila de la Profa. Sujey
+                font: { color: { rgb: "FFFFFF" }, bold: true, sz: 11 },
+                alignment: { horizontal: "center", vertical: "center" },
+                border: bordeDelgado
+            };
+
+            // 1. Fila de encabezados
+            const filaEncabezados = [
+                { v: "No.", t: "s", s: estiloEncabezado },
+                { v: "Nombre del Alumno", t: "s", s: estiloEncabezado }
+            ];
+
+            fechasUnicas.forEach(fecha => {
+                const dia = fecha.split('-')[2];
+                filaEncabezados.push({ v: `Día ${dia}`, t: "s", s: estiloEncabezado });
+            });
+
+            filaEncabezados.push({ v: textoTotal, t: "s", s: estiloEncabezado });
+
+            const filasExcel = [filaEncabezados];
+
+            // 2. Filas de alumnos con sus colores de celda
+            datosMatrizActual.forEach(alumno => {
+                const fila = [
+                    {
+                        v: alumno.numero,
+                        t: "n",
+                        s: { alignment: { horizontal: "center", vertical: "center" }, border: bordeDelgado }
+                    },
+                    {
+                        v: alumno.nombre,
+                        t: "s",
+                        s: { font: { bold: true }, alignment: { horizontal: "left", vertical: "center" }, border: bordeDelgado }
+                    }
+                ];
+
+                alumno.celdas.forEach(celda => {
+                    let estiloCelda = {
+                        alignment: { horizontal: "center", vertical: "center" },
+                        border: bordeDelgado
+                    };
+
+                    if (celda.positivo) {
+                        estiloCelda.fill = { fgColor: { rgb: "E8F8F5" } };
+                        estiloCelda.font = { color: { rgb: "1E8449" }, bold: true };
+                    } else {
+                        estiloCelda.fill = { fgColor: { rgb: "FDEDEC" } };
+                        estiloCelda.font = { color: { rgb: "C0392B" } };
+                    }
+
+                    fila.push({ v: celda.valor, t: "n", s: estiloCelda });
+                });
+
+                // Celda de Total Mensual resaltada en tono lila suave
+                fila.push({
+                    v: alumno.total,
+                    t: "n",
+                    s: {
+                        fill: { fgColor: { rgb: "F5EEF8" } },
+                        font: { bold: true, color: { rgb: "6C3483" } },
+                        alignment: { horizontal: "center", vertical: "center" },
+                        border: bordeDelgado
+                    }
+                });
+
+                filasExcel.push(fila);
+            });
+
+            // 3. Crear hoja y ajustar ancho de columnas
+            const hoja = XLSX.utils.aoa_to_sheet(filasExcel);
+
+            const anchosColumnas = [
+                { wch: 6 },  // No.
+                { wch: 32 }  // Nombre del Alumno
+            ];
+
+            fechasUnicas.forEach(() => {
+                anchosColumnas.push({ wch: 10 });
+            });
+            anchosColumnas.push({ wch: 22 }); // Columna de Total
+
+            hoja['!cols'] = anchosColumnas;
+
+            // 4. Descargar archivo .xlsx
+            const libro = XLSX.utils.book_new();
+            const prefijo = tipoReporte === 'asistencia' ? 'Asistencias' : 'Actividades';
+            XLSX.utils.book_append_sheet(libro, hoja, prefijo);
+
+            XLSX.writeFile(libro, `${prefijo}_Sujey_Grupo_${grupoSeleccionado}_${mesSeleccionado}.xlsx`);
+        }
+
+        function traducirEscaner() {
+            let camaraActiva = false;
+
+            document.querySelectorAll('button').forEach(btn => {
+                if (btn.innerText.includes("Request Camera Permissions")) btn.innerText = "Permitir acceso a la cámara";
+                if (btn.innerText.includes("Start Scanning")) btn.innerText = "Iniciar cámara";
+                
+                if (btn.innerText.includes("Stop Scanning") || btn.innerText.includes("Detener cámara")) {
+                    btn.innerText = "Detener cámara";
+                    if (btn.offsetParent !== null) {
+                        camaraActiva = true; 
+                    }
+                }
+            });
+
+            document.querySelectorAll('#reader span').forEach(span => {
+                if (span.querySelector('select')) {
+                    span.style.display = camaraActiva ? 'none' : 'inline-block';
+                }
+            });
+
+            document.querySelectorAll('#reader a').forEach(enlace => {
+                enlace.style.display = camaraActiva ? 'none' : 'inline-block';
+            });
+
+            document.querySelectorAll('#reader img').forEach(img => {
+                if (!img.src.includes("logo.png")) {
+                    img.src = "logo.png";
+                    img.style.maxWidth = "160px"; 
+                    img.style.marginBottom = "15px";
+                    img.style.borderRadius = "10px";
+                }
+            });
+
+            document.querySelectorAll('span').forEach(span => {
+                span.childNodes.forEach(nodo => {
+                    if (nodo.nodeType === 3 && nodo.nodeValue.includes("Select Camera")) {
+                        nodo.nodeValue = nodo.nodeValue.replace("Select Camera", "Seleccionar Cámara");
+                    }
+                });
+            });
+
+            document.querySelectorAll('option').forEach(opt => {
+                if (!opt.innerText.includes("Cámara")) {
+                    if (opt.innerText.toLowerCase().includes("front")) opt.innerText = "Cámara Frontal";
+                    if (opt.innerText.toLowerCase().includes("back")) opt.innerText = "Cámara Trasera";
+                }
+            });
+        }
+        
+        setInterval(traducirEscaner, 500);
+        escaner.render(onScanSuccess, onScanFailure);
+
+    </script>
+</body>
+</html>
