@@ -7,7 +7,6 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <!-- Librería para exportar a Excel (.xlsx) con colores y formato -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
     <style>
@@ -15,24 +14,19 @@
         h1 { color: #333; margin-bottom: 5px; }
         h3 { color: #555; margin-top: 0; margin-bottom: 20px; font-weight: normal; }
         
-        /* Navegación entre vistas principales */
         .nav-bar { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; }
         .nav-btn { padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; background-color: #ddd; color: #333; transition: 0.3s; }
         .nav-btn.activa { background-color: #b07cc6; color: white; }
 
-        /* Controles de Modo (Escáner) */
         .modo-bar { margin-bottom: 15px; display: flex; justify-content: center; gap: 10px; background: white; padding: 10px; border-radius: 8px; max-width: 450px; margin-left: auto; margin-right: auto; box-shadow: 0px 4px 10px rgba(0,0,0,0.05); }
         .modo-btn { padding: 8px 15px; font-size: 15px; font-weight: bold; cursor: pointer; border: 2px solid transparent; border-radius: 5px; background-color: #f0f0f0; color: #555; transition: 0.3s; width: 50%; }
         .modo-btn.activa { border: 2px solid #b07cc6; background-color: #fdf5ff; color: #b07cc6; }
 
-        /* Vistas */
         #vista-escaner { display: block; }
         #vista-reportes { display: none; text-align: left; max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); overflow-x: auto; }
 
-        /* Burbuja de Notificaciones (Status) - Arriba */
         #status { margin: 0 auto 15px auto; padding: 12px; font-weight: bold; font-size: 1.2em; color: #b07cc6; background-color: white; border-radius: 8px; max-width: 450px; box-shadow: 0px 4px 10px rgba(0,0,0,0.08); }
 
-        /* Contenedor del Escáner */
         #reader { width: 100%; max-width: 450px; margin: 0 auto; background: white; padding: 10px; border-radius: 8px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
         
         #reader select { padding: 12px !important; font-size: 16px !important; margin-bottom: 20px !important; border-radius: 5px !important; width: 90% !important; max-width: 300px !important; border: 2px solid #ccc !important; }
@@ -40,7 +34,6 @@
         #reader button:hover { background-color: #9b59b6 !important; }
         #reader a { font-size: 16px !important; display: inline-block !important; margin-top: 15px !important; padding: 10px !important; color: #b07cc6 !important; }
 
-        /* Controles de reporte */
         .controles-reporte { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
         .controles-reporte select, .controles-reporte input { padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
         .btn-accion { padding: 10px 15px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; color: white; background-color: #b07cc6; transition: 0.3s; }
@@ -48,7 +41,6 @@
         .btn-accion.verde { background-color: #28a745; display: none; } 
         .btn-accion.verde:hover { background-color: #218838; }
 
-        /* Tabla de Reportes */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
         th { background-color: #b07cc6; color: white; position: sticky; top: 0; }
@@ -62,30 +54,22 @@
     <h1>Gestor de Asistencias y Actividades</h1>
     <h3>Profesora Sujey</h3>
 
-    <!-- Menú Principal -->
     <div class="nav-bar">
         <button id="btn-nav-escaner" class="nav-btn activa" onclick="cambiarVista('escaner')">📷 Escáner</button>
         <button id="btn-nav-reportes" class="nav-btn" onclick="cambiarVista('reportes')">📊 Matriz de Reportes</button>
     </div>
     
-    <!-- VISTA 1: ESCÁNER -->
     <div id="vista-escaner">
-        <!-- Sub-menú de MODO DE ESCANEO -->
         <div class="modo-bar">
             <button id="btn-modo-asistencia" class="modo-btn activa" onclick="setModoEscaneo('asistencia')">📝 Asistencia</button>
             <button id="btn-modo-actividad" class="modo-btn" onclick="setModoEscaneo('actividad')">⭐ Actividad</button>
         </div>
-
-        <!-- BURBUJA DE ESTADO -->
         <div id="status">Iniciando sistema...</div>
-
-        <!-- CÁMARA -->
         <div id="reader"></div>
     </div>
 
-    <!-- VISTA 2: REPORTES -->
     <div id="vista-reportes">
-        <h2>Generador de Matriz Mensual</h2>
+        <h2>Generador de Matriz (Rango de Meses)</h2>
         
         <div class="controles-reporte">
             <div>
@@ -102,25 +86,27 @@
                 </select>
             </div>
             <div>
-                <label>Mes: </label>
-                <input type="month" id="input-mes" required>
+                <label>De: </label>
+                <input type="month" id="input-mes-inicio" required>
+            </div>
+            <div>
+                <label>A: </label>
+                <input type="month" id="input-mes-fin" required>
             </div>
             <button class="btn-accion" onclick="generarReporte()">Generar Tabla</button>
             <button id="btn-descarga" class="btn-accion verde" onclick="descargarMatrizExcel()">⬇️ Descargar Excel</button>
         </div>
 
         <div id="contenedor-matriz">
-            <p>Selecciona tipo de reporte, grupo y mes.</p>
+            <p>Selecciona tipo de reporte, grupo y el rango de meses.</p>
         </div>
     </div>
 
     <script>
-        // --- TUS LLAVES ---
         const URL_PROYECTO = 'https://retwotliyxutzgsftwff.supabase.co';
         const LLAVE_PUBLICA = 'sb_publishable_mjZTWi3pGAHXd6tGyEJkBQ_nAXal2kD';
         const clienteSupabase = supabase.createClient(URL_PROYECTO, LLAVE_PUBLICA);
 
-        // --- SISTEMA DE SONIDO INTEGRADO ---
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         const audioCtx = new AudioContextClass();
 
@@ -175,6 +161,9 @@
         let fechasUnicas = [];
         let modoEscaneoActual = 'asistencia'; 
 
+        // Diccionario para formatear los meses
+        const nombresMeses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
         function cambiarVista(vista) {
             document.getElementById('vista-escaner').style.display = vista === 'escaner' ? 'block' : 'none';
             document.getElementById('vista-reportes').style.display = vista === 'reportes' ? 'block' : 'none';
@@ -197,7 +186,7 @@
 
         const statusText = document.getElementById('status');
         let ultimoEscaneo = ""; 
-        let procesandoEscaneo = false; // Candado contra lecturas simultáneas
+        let procesandoEscaneo = false; 
         
         const escaner = new Html5QrcodeScanner("reader", { 
             fps: 10, 
@@ -236,7 +225,6 @@
                 
                 const tablaDestino = modoEscaneoActual === 'asistencia' ? 'asistencias_clase' : 'actividades_clase';
 
-                // Si es ASISTENCIA, validamos con .limit(1) para no duplicar jamás en la base de datos
                 if (modoEscaneoActual === 'asistencia') {
                     const { data: registrosHoy, error: errorBusqueda } = await clienteSupabase
                         .from(tablaDestino)
@@ -266,7 +254,6 @@
                     statusText.style.color = "green";
 
                 } else {
-                    // Si es ACTIVIDAD, permite múltiples registros al día y muestra cuántas lleva hoy
                     const { error: errorAct } = await clienteSupabase
                         .from(tablaDestino)
                         .insert([{ alumno_id: alumno.id, fecha: fechaHoy }]);
@@ -304,8 +291,10 @@
             }, 2500); 
         }
 
-        const hoy = new Date();
-        document.getElementById('input-mes').value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+        const hoyInit = new Date();
+        const mesActual = `${hoyInit.getFullYear()}-${String(hoyInit.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById('input-mes-inicio').value = mesActual;
+        document.getElementById('input-mes-fin').value = mesActual;
 
         async function cargarGruposDisponibles() {
             const select = document.getElementById('select-grupo');
@@ -326,16 +315,22 @@
         async function generarReporte() {
             const tipoReporte = document.getElementById('select-tipo-reporte').value;
             const grupoSeleccionado = document.getElementById('select-grupo').value;
-            const mesSeleccionado = document.getElementById('input-mes').value; 
+            const mesInicioSeleccionado = document.getElementById('input-mes-inicio').value;
+            const mesFinSeleccionado = document.getElementById('input-mes-fin').value;
             const contenedor = document.getElementById('contenedor-matriz');
             const btnDescarga = document.getElementById('btn-descarga');
 
-            if (!grupoSeleccionado || !mesSeleccionado) {
-                alert("Por favor, selecciona un grupo y un mes.");
+            if (!grupoSeleccionado || !mesInicioSeleccionado || !mesFinSeleccionado) {
+                alert("Por favor, selecciona un grupo y el rango de meses.");
                 return;
             }
 
-            contenedor.innerHTML = "<p>Procesando datos del mes...</p>";
+            if (mesInicioSeleccionado > mesFinSeleccionado) {
+                alert("El mes de inicio no puede ser mayor al mes de fin.");
+                return;
+            }
+
+            contenedor.innerHTML = "<p>Procesando datos del rango seleccionado...</p>";
             btnDescarga.style.display = "none";
 
             try {
@@ -350,33 +345,38 @@
                     return;
                 }
 
-                const [anio, mes] = mesSeleccionado.split('-');
-                const fechaInicio = `${anio}-${mes}-01`;
-                const fechaFin = new Date(anio, mes, 0).toLocaleDateString('sv-SE'); 
+                // Calcular fecha inicio
+                const [anioIni, mesIni] = mesInicioSeleccionado.split('-');
+                const fechaInicio = `${anioIni}-${mesIni}-01`;
+
+                // Calcular fecha fin
+                const [anioFin, mesFin] = mesFinSeleccionado.split('-');
+                const fechaFin = new Date(anioFin, mesFin, 0).toLocaleDateString('sv-SE');
 
                 const idsAlumnos = alumnos.map(a => a.id);
                 const tablaConsulta = tipoReporte === 'asistencia' ? 'asistencias_clase' : 'actividades_clase';
 
-                const { data: registrosMes } = await clienteSupabase
+                const { data: registrosPeriodo } = await clienteSupabase
                     .from(tablaConsulta)
                     .select('alumno_id, fecha')
                     .in('alumno_id', idsAlumnos)
                     .gte('fecha', fechaInicio)
                     .lte('fecha', fechaFin);
 
-                fechasUnicas = [...new Set((registrosMes || []).map(a => a.fecha))].sort();
+                fechasUnicas = [...new Set((registrosPeriodo || []).map(a => a.fecha))].sort();
 
                 if (fechasUnicas.length === 0) {
                     const nombreRep = tipoReporte === 'asistencia' ? 'asistencias' : 'actividades';
-                    contenedor.innerHTML = `<p>No hay ${nombreRep} registradas para este grupo en este mes.</p>`;
+                    contenedor.innerHTML = `<p>No hay ${nombreRep} registradas para este grupo en el periodo seleccionado.</p>`;
                     return;
                 }
 
                 let htmlTabla = `<table><thead><tr><th>No.</th><th class="nombre-col">Nombre del Alumno</th>`;
                 
                 fechasUnicas.forEach(fecha => {
-                    const dia = fecha.split('-')[2]; 
-                    htmlTabla += `<th>Día ${dia}</th>`;
+                    const [anioF, mesF, diaF] = fecha.split('-');
+                    const nombreMes = nombresMeses[parseInt(mesF, 10) - 1];
+                    htmlTabla += `<th>${parseInt(diaF, 10)} ${nombreMes}</th>`;
                 });
                 
                 const textoTotal = tipoReporte === 'asistencia' ? 'TOTAL ASISTENCIAS' : 'TOTAL ACT. ENTREGADAS';
@@ -392,7 +392,7 @@
                     let datosAlumno = { numero: numLista, nombre: alumno.nombre_completo, celdas: [], total: 0 };
 
                     fechasUnicas.forEach(fecha => {
-                        const cantidadDia = registrosMes.filter(r => r.alumno_id === alumno.id && r.fecha === fecha).length;
+                        const cantidadDia = registrosPeriodo.filter(r => r.alumno_id === alumno.id && r.fecha === fecha).length;
                         
                         if (cantidadDia > 0) {
                             const valorMostrado = tipoReporte === 'asistencia' ? 1 : cantidadDia;
@@ -422,11 +422,11 @@
             }
         }
 
-        // --- DESCARGAR EXCEL (.XLSX) CON EL FORMATO Y COLORES DE LA PROFA. SUJEY ---
         function descargarMatrizExcel() {
             const tipoReporte = document.getElementById('select-tipo-reporte').value;
             const grupoSeleccionado = document.getElementById('select-grupo').value;
-            const mesSeleccionado = document.getElementById('input-mes').value;
+            const mesInicio = document.getElementById('input-mes-inicio').value;
+            const mesFin = document.getElementById('input-mes-fin').value;
             const textoTotal = tipoReporte === 'asistencia' ? 'TOTAL ASISTENCIAS' : 'TOTAL ACT. ENTREGADAS';
 
             const bordeDelgado = {
@@ -437,28 +437,27 @@
             };
 
             const estiloEncabezado = {
-                fill: { fgColor: { rgb: "B07CC6" } }, // Lila de la Profa. Sujey
+                fill: { fgColor: { rgb: "B07CC6" } }, 
                 font: { color: { rgb: "FFFFFF" }, bold: true, sz: 11 },
                 alignment: { horizontal: "center", vertical: "center" },
                 border: bordeDelgado
             };
 
-            // 1. Fila de encabezados
             const filaEncabezados = [
                 { v: "No.", t: "s", s: estiloEncabezado },
                 { v: "Nombre del Alumno", t: "s", s: estiloEncabezado }
             ];
 
             fechasUnicas.forEach(fecha => {
-                const dia = fecha.split('-')[2];
-                filaEncabezados.push({ v: `Día ${dia}`, t: "s", s: estiloEncabezado });
+                const [anioF, mesF, diaF] = fecha.split('-');
+                const nombreMes = nombresMeses[parseInt(mesF, 10) - 1];
+                filaEncabezados.push({ v: `${parseInt(diaF, 10)} ${nombreMes}`, t: "s", s: estiloEncabezado });
             });
 
             filaEncabezados.push({ v: textoTotal, t: "s", s: estiloEncabezado });
 
             const filasExcel = [filaEncabezados];
 
-            // 2. Filas de alumnos con sus colores de celda
             datosMatrizActual.forEach(alumno => {
                 const fila = [
                     {
@@ -490,7 +489,6 @@
                     fila.push({ v: celda.valor, t: "n", s: estiloCelda });
                 });
 
-                // Celda de Total Mensual resaltada en tono lila suave
                 fila.push({
                     v: alumno.total,
                     t: "n",
@@ -505,27 +503,32 @@
                 filasExcel.push(fila);
             });
 
-            // 3. Crear hoja y ajustar ancho de columnas
             const hoja = XLSX.utils.aoa_to_sheet(filasExcel);
 
             const anchosColumnas = [
-                { wch: 6 },  // No.
-                { wch: 32 }  // Nombre del Alumno
+                { wch: 6 },  
+                { wch: 32 }  
             ];
 
             fechasUnicas.forEach(() => {
                 anchosColumnas.push({ wch: 10 });
             });
-            anchosColumnas.push({ wch: 22 }); // Columna de Total
+            anchosColumnas.push({ wch: 22 }); 
 
             hoja['!cols'] = anchosColumnas;
 
-            // 4. Descargar archivo .xlsx
             const libro = XLSX.utils.book_new();
             const prefijo = tipoReporte === 'asistencia' ? 'Asistencias' : 'Actividades';
             XLSX.utils.book_append_sheet(libro, hoja, prefijo);
 
-            XLSX.writeFile(libro, `${prefijo}_Sujey_Grupo_${grupoSeleccionado}_${mesSeleccionado}.xlsx`);
+            let nombreArchivo = `${prefijo}_Sujey_Grupo_${grupoSeleccionado}`;
+            if(mesInicio === mesFin) {
+                nombreArchivo += `_${mesInicio}.xlsx`;
+            } else {
+                nombreArchivo += `_De_${mesInicio}_a_${mesFin}.xlsx`;
+            }
+            
+            XLSX.writeFile(libro, nombreArchivo);
         }
 
         function traducirEscaner() {
